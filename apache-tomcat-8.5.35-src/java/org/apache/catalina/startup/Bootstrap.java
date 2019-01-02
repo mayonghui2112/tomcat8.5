@@ -49,9 +49,11 @@ import org.apache.juli.logging.LogFactory;
  */
 public final class Bootstrap {
 
+    //初始化日志工厂，jul
     private static final Log log = LogFactory.getLog(Bootstrap.class);
 
     /**
+     * main使用的守护线程对象，即bootstrap
      * Daemon object used by main.
      */
     private static Bootstrap daemon = null;
@@ -63,21 +65,30 @@ public final class Bootstrap {
 
     static {
         // Will always be non-null
+        //获取jvm参数user.dir的值
         String userDir = System.getProperty("user.dir");
 
         // Home first
+        //获取tomcat的catalina.home目录，即安装目录
         String home = System.getProperty(Globals.CATALINA_HOME_PROP);
         File homeFile = null;
 
         if (home != null) {
+            //根据安装目录获取file抽象路径对象
             File f = new File(home);
+            //getCanonicalPath会将文件路径解析为与操作系统相关的唯一的规范形式的字符串，而getAbsolutePath并不会。
             try {
+                //根据安装目录的抽象目录对象，返回一个新的绝对路径对象，如果路径无效，报错。
+                //该绝对路径是根据操作系统生成的唯一的路径，
                 homeFile = f.getCanonicalFile();
             } catch (IOException ioe) {
+                //根据安装目录的抽象目录对象，返回一个新的绝对路径对象，如果路径无效，不会报错。
+                //绝对路径不一定精确
                 homeFile = f.getAbsoluteFile();
             }
         }
 
+        //myh-question？
         if (homeFile == null) {
             // First fall-back. See if current directory is a bin directory
             // in a normal Tomcat install
@@ -93,6 +104,7 @@ public final class Bootstrap {
             }
         }
 
+        //myh-question？
         if (homeFile == null) {
             // Second fall-back. Use current directory
             File f = new File(userDir);
@@ -102,24 +114,30 @@ public final class Bootstrap {
                 homeFile = f.getAbsoluteFile();
             }
         }
-
+        //根据上三步获取安装目录，赋值给catalinaHomeFile变量
         catalinaHomeFile = homeFile;
+        //设置catalina.home的jvm参数值
         System.setProperty(
                 Globals.CATALINA_HOME_PROP, catalinaHomeFile.getPath());
 
         // Then base
+        //获取catalina.base的jvm参数值，运行目录，即实例目录
         String base = System.getProperty(Globals.CATALINA_BASE_PROP);
+        //如果没有设置实例目录系统变量，则把安装目录当作实例目录
         if (base == null) {
             catalinaBaseFile = catalinaHomeFile;
         } else {
+            //有实例变量，根据实例变量获取实例目录
             File baseFile = new File(base);
             try {
                 baseFile = baseFile.getCanonicalFile();
             } catch (IOException ioe) {
                 baseFile = baseFile.getAbsoluteFile();
             }
+            //把实例目录的绝对路径的file对象值复制给catalinaBaseFile
             catalinaBaseFile = baseFile;
         }
+        //设置实例目录系统变量
         System.setProperty(
                 Globals.CATALINA_BASE_PROP, catalinaBaseFile.getPath());
     }
@@ -132,15 +150,25 @@ public final class Bootstrap {
      */
     private Object catalinaDaemon = null;
 
+    //tomcat的三个类加载器，打破了jdk父类委派机制，都是 URLClassLoader子类
+    //jdk三个类加载器：bootStrap ClassLoad/ext ClassLoad/system ClassLoad
+    //JDK类加载器拥有双亲委派机制，
+    // 双亲委派机制：bootstrap加载类，加载完成后 ext加载类，加载类之前先去父类查看类是否加载，加载了就不再加载，父类没有再加载，
+    // system类加载器，先去父类寻找，父类加载过，不再加载，父类没有在加载，
 
+    // commonLoader为公共类加载器，他没有父加载器，tomcat服务器和容器内的应用都能使用commonLoader加载的类
     ClassLoader commonLoader = null;
+    //tomcat内置类加载器，加载的类供tomcat服务器使用。父加载器是commonLoader
     ClassLoader catalinaLoader = null;
+    //应用类加载器，加载的类供所有webApp应用共用。。父加载器是commonLoader
+    // 每个webApp又单独有一个类加载器，父类加载器是sharedLoader
+    // 加载webApp下面classes和lib的类，各个webApp类加载器加载的类相互不影响
     ClassLoader sharedLoader = null;
 
 
     // -------------------------------------------------------- Private Methods
 
-
+    //都是URLClassLoader子类
     private void initClassLoaders() {
         try {
             commonLoader = createClassLoader("common", null);
@@ -254,21 +282,27 @@ public final class Bootstrap {
      */
     public void init() throws Exception {
 
+        //初始化三个类加载器和他们的关系
         initClassLoaders();
 
+        //把catalinaLoader放到当前线程上下文类加载器中
         Thread.currentThread().setContextClassLoader(catalinaLoader);
-
+        //把catalinaLoader作为安全加载器
         SecurityClassLoad.securityClassLoad(catalinaLoader);
 
         // Load our startup class and call its process() method
         if (log.isDebugEnabled())
             log.debug("Loading startup class");
+        //加载org.apache.catalina.startup.Catalina类
         Class<?> startupClass = catalinaLoader.loadClass("org.apache.catalina.startup.Catalina");
+        //反射实例化Catalina类
         Object startupInstance = startupClass.getConstructor().newInstance();
 
         // Set the shared extensions class loader
         if (log.isDebugEnabled())
             log.debug("Setting startup class properties");
+        //用反射调用Catalina实例的setParentClassLoader方法，
+        // 把sharedLoader作为Catalina父类加载器
         String methodName = "setParentClassLoader";
         Class<?> paramTypes[] = new Class[1];
         paramTypes[0] = Class.forName("java.lang.ClassLoader");
@@ -277,7 +311,7 @@ public final class Bootstrap {
         Method method =
             startupInstance.getClass().getMethod(methodName, paramTypes);
         method.invoke(startupInstance, paramValues);
-
+        //catalinaDaemon引用catalina的实例，作为守护catalina守护线程
         catalinaDaemon = startupInstance;
 
     }
@@ -288,7 +322,7 @@ public final class Bootstrap {
      */
     private void load(String[] arguments)
         throws Exception {
-
+        //利用反射的方法，执行了catalina的load方法
         // Call the load() method
         String methodName = "load";
         Object param[];
@@ -455,17 +489,23 @@ public final class Bootstrap {
      * @param args Command line arguments to be processed
      */
     public static void main(String args[]) {
-
+        //实例话初始化bootstrap，作为main的守护线程，赋值给daemon
         if (daemon == null) {
             // Don't set daemon until init() has completed
+            //初始化工作完成之后设置daemon
+            //实例话bootstrap，执行静态语句，初始化静态变量
             Bootstrap bootstrap = new Bootstrap();
             try {
+                //执行bootStrap初始化
+                //初始化三个类加载器及其关系和应用，实例话catalina类，设置其父加载器为shareClassLoad
+                //把catalina实例作为catalina的值
                 bootstrap.init();
             } catch (Throwable t) {
                 handleThrowable(t);
                 t.printStackTrace();
                 return;
             }
+            //把bootstrap作为deamon的值
             daemon = bootstrap;
         } else {
             // When running as a service the call to stop will be on a new
@@ -473,13 +513,16 @@ public final class Bootstrap {
             // a range of class not found exceptions.
             Thread.currentThread().setContextClassLoader(daemon.catalinaLoader);
         }
-
+        //根据命令，执行守护线程
         try {
+            //默认命令为start
             String command = "start";
+            //有启动jvm参数，获取参数的最后一个值作为命令
             if (args.length > 0) {
                 command = args[args.length - 1];
             }
 
+            //根据命令，执行守护线程
             if (command.equals("startd")) {
                 args[args.length - 1] = "start";
                 daemon.load(args);
@@ -488,7 +531,10 @@ public final class Bootstrap {
                 args[args.length - 1] = "stop";
                 daemon.stop();
             } else if (command.equals("start")) {
+                //命令为start时
+                //myh-question?
                 daemon.setAwait(true);
+                //守护线程加载参数
                 daemon.load(args);
                 daemon.start();
                 if (null == daemon.getServer()) {

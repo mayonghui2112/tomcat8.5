@@ -79,6 +79,7 @@ package org.apache.catalina;
  * attempted transition is not valid.
  *
  * @author Craig R. McClanahan
+ * 定义了生命周期事件变量，生命周期的方法，获取状态和使用的方法，增闪生命周期监听事件
  */
 public interface Lifecycle {
 
@@ -309,6 +310,7 @@ public interface Lifecycle {
 
 
     /**
+     * 标明实例只能使用一次
      * Marker interface used to indicate that the instance should only be used
      * once. Calling {@link #stop()} on an instance that supports this interface
      * will automatically call {@link #destroy()} after {@link #stop()}

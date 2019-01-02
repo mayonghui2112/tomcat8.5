@@ -32,6 +32,9 @@ import org.apache.tomcat.util.res.StringManager;
 
 
 /**
+ * 生命周期接口的基本抽象实现类
+ * 实现了所有生命周期的基本实现，并在生命周期各个阶段注册相应事件
+ * 并为每个生命周期提供了预留方法，共子类完成
  * Base implementation of the {@link Lifecycle} interface that implements the
  * state transition rules for {@link Lifecycle#start()} and
  * {@link Lifecycle#stop()}
@@ -90,6 +93,7 @@ public abstract class LifecycleBase implements Lifecycle {
      */
     protected void fireLifecycleEvent(String type, Object data) {
         LifecycleEvent event = new LifecycleEvent(this, type, data);
+        //遍历所有的生命周期监听器，调用监听器的lifecycleEvent方法
         for (LifecycleListener listener : lifecycleListeners) {
             listener.lifecycleEvent(event);
         }
@@ -103,8 +107,10 @@ public abstract class LifecycleBase implements Lifecycle {
         }
 
         try {
+            //表明生命周期将要初始化
             setStateInternal(LifecycleState.INITIALIZING, null, false);
-            initInternal();
+            initInternal();//预留方法，初始化组件
+            //表明生命周期在初始化完成
             setStateInternal(LifecycleState.INITIALIZED, null, false);
         } catch (Throwable t) {
             ExceptionUtils.handleThrowable(t);
@@ -146,15 +152,18 @@ public abstract class LifecycleBase implements Lifecycle {
         }
 
         try {
+            //设置启动前状态
             setStateInternal(LifecycleState.STARTING_PREP, null, false);
-            startInternal();
+            startInternal();//启动组件
             if (state.equals(LifecycleState.FAILED)) {
                 // This is a 'controlled' failure. The component put itself into the
                 // FAILED state so call stop() to complete the clean-up.
+                //启动失败，停止
                 stop();
             } else if (!state.equals(LifecycleState.STARTING)) {
                 // Shouldn't be necessary but acts as a check that sub-classes are
                 // doing what they are supposed to.
+                //设置启动完成
                 invalidTransition(Lifecycle.AFTER_START_EVENT);
             } else {
                 setStateInternal(LifecycleState.STARTED, null, false);
@@ -163,6 +172,7 @@ public abstract class LifecycleBase implements Lifecycle {
             // This is an 'uncontrolled' failure so put the component into the
             // FAILED state and throw an exception.
             ExceptionUtils.handleThrowable(t);
+            //设置启动失败状态
             setStateInternal(LifecycleState.FAILED, null, false);
             throw new LifecycleException(sm.getString("lifecycleBase.startFail", toString()), t);
         }
@@ -355,6 +365,9 @@ public abstract class LifecycleBase implements Lifecycle {
         setStateInternal(state, data, true);
     }
 
+    //是设置状态的预留方法
+    //各个状态也是生命周期的各个事件
+    //设置状态的时候，状态不为空，fireLifecycleEvent方法激活事件
     private synchronized void setStateInternal(LifecycleState state,
             Object data, boolean check) throws LifecycleException {
 

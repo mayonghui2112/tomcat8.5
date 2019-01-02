@@ -125,6 +125,8 @@ public class Catalina {
 
     /**
      * Prevent duplicate loads.
+     * loaded,是否加载完成，默认为false
+     * 为了阻止重复加载
      */
     protected boolean loaded = false;
 
@@ -528,22 +530,27 @@ public class Catalina {
      * Start a new server instance.
      */
     public void load() {
-
+        //loaded,是否加载完成，默认为false，防止重复加载
         if (loaded) {
             return;
         }
+        //加载方法执行过
         loaded = true;
 
+        //加载开始时间
         long t1 = System.nanoTime();
-
+        //初始化检查临时文件夹
         initDirs();
 
         // Before digester - it may be needed
+        //初始化命名空间
         initNaming();
 
         // Create and execute our Digester
+        //创建并执行解析器，用来解析server.xml
+        //apach的公用组件，在apach的common报，tomcat把它的源码拿过来了
         Digester digester = createStartDigester();
-
+        //读取server.xml文件
         InputSource inputSource = null;
         InputStream inputStream = null;
         File file = null;
@@ -574,6 +581,7 @@ public class Catalina {
 
             // This should be included in catalina.jar
             // Alternative: don't bother with xml, just create it manually.
+            //没有server.xml，解析server-embed.xml
             if (inputStream == null) {
                 try {
                     inputStream = getClass().getClassLoader()
@@ -589,7 +597,7 @@ public class Catalina {
                 }
             }
 
-
+            //没有配置文件，返回
             if (inputStream == null || inputSource == null) {
                 if  (file == null) {
                     log.warn(sm.getString("catalina.configFail",
@@ -604,6 +612,7 @@ public class Catalina {
                 return;
             }
 
+            //读取解析配置文件，生成server.xml配置的对象
             try {
                 inputSource.setByteStream(inputStream);
                 digester.push(this);
@@ -626,15 +635,19 @@ public class Catalina {
             }
         }
 
+        //获取server，并初始化一些属性
+        //getServer（）获取stardardServer对象
         getServer().setCatalina(this);
         getServer().setCatalinaHome(Bootstrap.getCatalinaHomeFile());
         getServer().setCatalinaBase(Bootstrap.getCatalinaBaseFile());
 
         // Stream redirection
+        //重定向输入输出流
         initStreams();
 
         // Start the new server
         try {
+            //调用server的init方法，也时父类LifecleBase的init方法，会调用子类的initInternal方法
             getServer().init();
         } catch (LifecycleException e) {
             if (Boolean.getBoolean("org.apache.catalina.startup.EXIT_ON_INIT_FAILURE")) {
@@ -792,7 +805,9 @@ public class Catalina {
 
 
     protected void initDirs() {
+        //获取jvm的java.io.tmpdir参数值
         String temp = System.getProperty("java.io.tmpdir");
+        //参数值为空，或者不是一个文件夹，打印错误日志
         if (temp == null || (!(new File(temp)).isDirectory())) {
             log.error(sm.getString("embedded.notmp", temp));
         }

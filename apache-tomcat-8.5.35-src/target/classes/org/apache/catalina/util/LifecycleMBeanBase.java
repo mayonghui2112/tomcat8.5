@@ -31,6 +31,11 @@ import org.apache.juli.logging.LogFactory;
 import org.apache.tomcat.util.modeler.Registry;
 import org.apache.tomcat.util.res.StringManager;
 
+/**
+ * 作为jmx，对tomcat进行管理，例如，对tomcat的realm，security进行管理等+
+ * 生命周期的抽象实现，继承了生命周期的基本实现，
+ * 实现了Mbean注册器的部分接口
+ */
 public abstract class LifecycleMBeanBase extends LifecycleBase
         implements JmxEnabled {
 
@@ -40,7 +45,8 @@ public abstract class LifecycleMBeanBase extends LifecycleBase
         StringManager.getManager("org.apache.catalina.util");
 
 
-    /* Cache components of the MBean registration. */
+    /* 缓存MBean注册的组件
+    Cache components of the MBean registration. */
     private String domain = null;
     private ObjectName oname = null;
     protected MBeanServer mserver = null;

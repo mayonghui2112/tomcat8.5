@@ -68,6 +68,13 @@ import org.apache.tomcat.util.res.StringManager;
 
 
 /**
+ * 抽象实现了Container接口，提供了几乎每个实现都需要的公共功能。
+ * 扩展这个基类的类必须重写invoke()。
+ * 该管道对象使用“责任链”设计模式，所有子类都支持管道对象，
+ * 管道对象定义了对该类invoke()方法接收到的每个请求要执行的处理。
+ * 子类应该将自己的处理功能封装为Valve，并通过调用setBasic()将该阀配置到管道中。
+ * 该实现根据javabean设计模式：触发属性更改事件。
+ * 此外，它还将以下ContainerEvent发送给使用addContainerListener()注册自己的侦听器:
  * Abstract implementation of the <b>Container</b> interface, providing common
  * functionality required by nearly every implementation.  Classes extending
  * this base class must may implement a replacement for <code>invoke()</code>.
@@ -125,6 +132,8 @@ import org.apache.tomcat.util.res.StringManager;
  * class comments of the implementation class.
  *
  * @author Craig R. McClanahan
+ *
+ * 顶层容器的基础抽象实现，继承了生命周期的
  */
 public abstract class ContainerBase extends LifecycleMBeanBase
         implements Container {

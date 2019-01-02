@@ -27,6 +27,28 @@ import org.apache.juli.logging.Log;
 
 
 /**
+ * 容器是一个对象，它可以执行从客户机接收到的请求，
+ * 并根据这些请求返回响应。容器还可以通过实现管道接口，
+ * 支持按运行时配置的顺序处理请求的阀门管道。
+ * 容器将存在于catalina内部的几个概念级别。
+ * 下面的例子代表了常见的情况:
+ * 引擎——整个Catalina servlet引擎的表示，
+ * 最有可能包含一个或多个子容器，这些子容器要么是主机实现要么是上下文实现，要么是其他定制组。
+ * 主机——包含许多上下文的虚拟主机的表示。
+ * 上下文——单个servlet上下文的表示，它通常包含一个或多个受支持servlet的包装器。
+ * 包装器——单个servlet定义的表示(如果servlet本身实现了SingleThreadModel， * 那么它可能支持多个servlet实例)。
+ * 给定的Catalina部署不需要包含上述所有级别的容器。
+ * 例如，嵌入在网络设备(如路由器)中的管理应用程序可能只包含一个上下文和几个包装器，
+ * 如果应用程序相对较小，甚至可能只包含一个包装器。因此，需要设计容器实现，
+ * 以便在给定部署中没有父容器的情况下正确操作。容器还可以与许多支持组件相关联，
+ * 这些支持组件提供可能被共享(通过将其附加到父容器)或单独定制的功能。
+ * 当前已识别出以下支持组件:
+ * Loader -类Loader，用于将此容器的新Java类集成到正在运行Catalina的JVM中。
+ * Logger -实现了log()方法签名的ServletContext接口。
+ * Manager——与此容器关联的会话池的管理器。
+ * Realm-安全领域的只读接口，用于验证用户身份及其对应角色。
+ * Resources——JNDI目录上下文支持对静态资源的访问，当Catalina被嵌入到一个更大的服务器中时，
+ * 支持到现有服务器组件的自定义链接。
  * A <b>Container</b> is an object that can execute requests received from
  * a client, and return responses based on those requests.  A Container may
  * optionally support a pipeline of Valves that process the request in an
@@ -75,6 +97,7 @@ import org.apache.juli.logging.Log;
  *
  * @author Craig R. McClanahan
  * @author Remy Maucherat
+ * //顶级容器接口，继承了生命周期的接口
  */
 public interface Container extends Lifecycle {
 
